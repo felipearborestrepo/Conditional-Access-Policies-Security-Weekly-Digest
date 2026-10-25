@@ -13,17 +13,6 @@
 
 ---
 
-## 💰 Business Impact
-
-### The Risk in Numbers
-| Metric | Value |
-|---|---|
-| Average cost of a data breach | $4.5M (IBM 2024) |
-| Breaches that MFA would have prevented | 99.9% (Microsoft) |
-| Organizations with CA policy gaps | Majority have at least one |
-| Time to manually audit CA health weekly | 1-2 hours |
-| Time with this script | Under 10 minutes |
-
 ### Why CA Policy Health Matters Weekly
 
 Conditional Access is your primary enforcement layer for identity
