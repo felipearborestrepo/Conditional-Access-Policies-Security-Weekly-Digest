@@ -66,22 +66,6 @@ every Friday morning.
 
 ---
 
-## 📊 Digest Output
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CA SECURITY WEEKLY DIGEST
-Week of: October 23 2026
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Total CA policies : 8
-Disabled policies : 1 🟡
-No MFA requirement : 2 🔴
-Users with no coverage : 10 🔴
-Report-only policies : 1 🟡
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OVERALL RISK: HIGH
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
----
-
 ## 🔍 Overall Risk Calculation
 
 | Findings Flagged | Risk Level |
