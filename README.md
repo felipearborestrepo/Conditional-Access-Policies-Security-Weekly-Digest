@@ -202,6 +202,105 @@ Write-Host "  Disabled policies : $disabledCount $(if ($disabledCount -gt 0) { '
 - Yellow or red with emoji when flagged
 - Overall risk printed in matching color at the bottom
 
+# Script
+
+```powershell
+Connect-MgGraph -Scopes "Policy.Read.All","User.Read.All","Group.Read.All" -NoWelcome
+Write-Host "Connected to Graph" -ForegroundColor Green
+Write-Host "Gathering CA security data..." -ForegroundColor Cyan
+
+$totalPolicies   = 0
+$disabledCount   = 0
+$noMFACount      = 0
+$noCoverageCount = 0
+$reportOnlyCount = 0
+
+# Pull data once before loops
+$policies      = Get-MgIdentityConditionalAccessPolicy
+$users         = Get-MgUser -All -Property "Id,DisplayName,UserPrincipalName,Department,AccountEnabled"
+$enabledUsers  = $users | Where-Object AccountEnabled -eq $true
+$enabledPolicies = $policies | Where-Object State -eq "enabled"
+
+$totalPolicies = $policies.Count
+
+# Check 1 2 3 — policy state and MFA
+foreach ($policy in $policies) {
+    if ($policy.State -eq "disabled")                          { $disabledCount++ }
+    if ($policy.State -eq "enabledForReportingButNotEnforced") { $reportOnlyCount++ }
+    if ($policy.State -eq "enabled" -and
+        -not ($policy.GrantControls.BuiltInControls -contains "mfa")) { $noMFACount++ }
+}
+
+# Check 4 — user coverage
+foreach ($user in $enabledUsers) {
+
+    $covered = $false
+
+    foreach ($policy in $enabledPolicies) {
+
+        $includeUsers  = $policy.Conditions.Users.IncludeUsers
+        $includeGroups = $policy.Conditions.Users.IncludeGroups
+        $excludeUsers  = $policy.Conditions.Users.ExcludeUsers
+
+        if ($includeUsers -contains "All") {
+            if ($excludeUsers -notcontains $user.Id) {
+                $covered = $true
+                break
+            }
+        }
+        elseif ($includeUsers -contains $user.Id) {
+            $covered = $true
+            break
+        }
+        elseif ($includeGroups.Count -gt 0) {
+            foreach ($groupId in $includeGroups) {
+                try {
+                    $groupMembers = Get-MgGroupMember -GroupId $groupId -ErrorAction SilentlyContinue
+                    if ($groupMembers.Id -contains $user.Id) {
+                        $covered = $true
+                        break
+                    }
+                } catch { continue }
+            }
+        }
+        if ($covered) { break }
+    }
+
+    if (-not $covered) { $noCoverageCount++ }
+}
+
+
+If ($disabledCount -gt 0) { $caSecurityScore++ }
+If ($noMFACount -gt 0) { $caSecurityScore++ }
+If ($noCoverageCount -gt 0) { $caSecurityScore++ }
+If ($reportOnlyCount -gt 0) { $caSecurityScore++ }
+
+$overallRisk = if ($highFindings -ge 3)    { "HIGH" }
+               elseif ($highFindings -ge 1) { "MEDIUM" }
+               else                         { "LOW" }
+
+$riskColor = if ($overallRisk -eq "HIGH")     { "Red" }
+             elseif ($overallRisk -eq "MEDIUM") { "Yellow" }
+             else                               { "Green" }
+
+# Print digest
+Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+Write-Host "  CA SECURITY WEEKLY DIGEST" -ForegroundColor White
+Write-Host "  Week of: $(Get-Date -Format 'MMMM dd yyyy')" -ForegroundColor DarkGray
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+Write-Host "  Total CA policies       : $totalPolicies" -ForegroundColor White
+Write-Host "  Disabled policies       : $disabledCount $(if ($disabledCount -gt 0) { '🟡' } else { '✅' })" -ForegroundColor $(if ($disabledCount -gt 0) { "Yellow" } else { "Green" })
+Write-Host "  No MFA requirement      : $noMFACount $(if ($noMFACount -gt 0) { '🔴' } else { '✅' })" -ForegroundColor $(if ($noMFACount -gt 0) { "Red" } else { "Green" })
+Write-Host "  Users with no coverage  : $noCoverageCount $(if ($noCoverageCount -gt 0) { '🔴' } else { '✅' })" -ForegroundColor $(if ($noCoverageCount -gt 0) { "Red" } else { "Green" })
+Write-Host "  Report-only policies    : $reportOnlyCount $(if ($reportOnlyCount -gt 0) { '🟡' } else { '✅' })" -ForegroundColor $(if ($reportOnlyCount -gt 0) { "Yellow" } else { "Green" })
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+Write-Host "  OVERALL RISK: $overallRisk" -ForegroundColor $riskColor
+Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`n" -ForegroundColor DarkGray
+```
+# Results in PowerShell
+
+<img width="358" height="213" alt="Screenshot 2026-10-24 at 22 07 47" src="https://github.com/user-attachments/assets/6a08d769-b491-459e-b085-fbbd5e284fb0" />
+
 ---
 
 ## 📋 Compliance Relevance
